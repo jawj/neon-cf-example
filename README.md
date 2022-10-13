@@ -15,5 +15,5 @@ To set up and run:
 * Run `npx wrangler secret put DB_PASSWORD` and enter your Neon database password, for deployment time.
 * Create `.dev.vars` containing `DB_PASSWORD=myneonpassword`, to support running locally.
 * `npx wrangler dev` or `npx wrangler dev --local` to run locally.
-* `npx wrangler deploy` to deploy.
+* `npx wrangler publish` to deploy.
 
