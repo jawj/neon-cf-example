@@ -2,6 +2,7 @@ export default ({ body, location }) => `
 <!DOCTYPE html><html>
   <head>
     <title>World heritage sites</title>
+    <meta name="viewport" content="initial-scale=.55">
     <style>
       body { margin: 0; padding: 2em 4em; background: #fff; font: 14px/1.25 sans-serif; }
       h1 { padding: 0 0 .33em; margin: 0 0 1em; border-bottom: 1px solid #ccc; }
