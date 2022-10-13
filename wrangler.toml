@@ -1,0 +1,12 @@
+name = "neon-cf-example"
+main = "src/index.ts"
+compatibility_date = "2022-10-12"
+
+[vars]
+
+DB_USER = "jawj"
+DB_HOST = "dark-dream-363824.cloud.neon.tech"
+
+# DB_PASSWORD:
+# Run `wrangler secret put DB_PASSWORD` and enter the password when prompted
+# For `wrangler dev --local`: create a file `.dev.vars` containing `DBPASSWORD=mypassword`
