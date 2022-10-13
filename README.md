@@ -8,7 +8,7 @@ curl https://letsencrypt.org/certs/isrgrootx1.pem > /tmp/isrgrootx1.pem
 psql 'postgres://username@adjective-noun-123.cloud.neon.tech:5432/main?sslmode=verify-full&sslrootcert=/tmp/isrgrootx1.pem' < data/import.psql
 ```
 
-To set and run:
+To set up and run:
 
 * `npm install`
 * Update the `DB_USER` and `DB_HOST` in `wrangler.toml`.
