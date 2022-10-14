@@ -14,7 +14,10 @@ export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
 
     // get IP-based location
-    const { latitude, longitude } = request.cf;
+    const latitude = request.cf.latitude ?? 37.818496;
+    const longitude = request.cf.longitude ?? -122.473831;
+    const city = request.cf.city ?? 'Unknown location (assuming San Francisco)';
+    const country = request.cf.country ?? 'Earth';
 
     // create DB client
     const client = new Client({
@@ -37,7 +40,7 @@ export default {
     ctx.waitUntil(client.end());
 
     // generate markup
-    const location = `${request.cf.city}, ${request.cf.country} (latitude ${latitude}, longitude ${longitude})`;
+    const location = `${city}, ${country} (latitude ${latitude}, longitude ${longitude})`;
     const body = result.rows.map(row => `
       <li><a href="https://whc.unesco.org/en/list/${row.id_no}/" 
              style="background-image: url(https://whc.unesco.org/uploads/sites/gallery/google/site_${row.id_no}.jpg)">
