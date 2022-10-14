@@ -811,8 +811,8 @@ var tls_emscripten = (() => {
     var _asyncify_stop_rewind = Module["_asyncify_stop_rewind"] = function() {
       return (_asyncify_stop_rewind = Module["_asyncify_stop_rewind"] = Module["asm"]["y"]).apply(null, arguments);
     };
-    var ___start_em_js = Module["___start_em_js"] = 19088;
-    var ___stop_em_js = Module["___stop_em_js"] = 19599;
+    var ___start_em_js = Module["___start_em_js"] = 19040;
+    var ___stop_em_js = Module["___stop_em_js"] = 19551;
     Module["ccall"] = ccall;
     Module["cwrap"] = cwrap;
     var calledRun;
