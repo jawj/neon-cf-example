@@ -1,11 +1,11 @@
 "use strict";
-import bearsslwasm from "./bearssl.wasm";
+import tlswasm from "./tls.wasm";
 // build/postgres-tmp.js
-var bearssl_emscripten = (() => {
+var tls_emscripten = (() => {
   var _scriptDir = typeof document !== "undefined" && document.currentScript ? document.currentScript.src : void 0;
-  return function(bearssl_emscripten2) {
-    bearssl_emscripten2 = bearssl_emscripten2 || {};
-    var Module = typeof bearssl_emscripten2 != "undefined" ? bearssl_emscripten2 : {};
+  return function(tls_emscripten2) {
+    tls_emscripten2 = tls_emscripten2 || {};
+    var Module = typeof tls_emscripten2 != "undefined" ? tls_emscripten2 : {};
     var readyPromiseResolve, readyPromiseReject;
     Module["ready"] = new Promise(function(resolve3, reject) {
       readyPromiseResolve = resolve3;
@@ -180,6 +180,23 @@ var bearssl_emscripten = (() => {
     function stringToUTF8(str, outPtr, maxBytesToWrite) {
       return stringToUTF8Array(str, HEAPU8, outPtr, maxBytesToWrite);
     }
+    function lengthBytesUTF8(str) {
+      var len = 0;
+      for (var i = 0; i < str.length; ++i) {
+        var c = str.charCodeAt(i);
+        if (c <= 127) {
+          len++;
+        } else if (c <= 2047) {
+          len += 2;
+        } else if (c >= 55296 && c <= 57343) {
+          len += 4;
+          ++i;
+        } else {
+          len += 3;
+        }
+      }
+      return len;
+    }
     var buffer, HEAP8, HEAPU8, HEAP16, HEAPU16, HEAP32, HEAPU32, HEAPF32, HEAPF64;
     function updateGlobalBufferAndViews(buf) {
       buffer = buf;
@@ -277,7 +294,7 @@ var bearssl_emscripten = (() => {
       return filename.startsWith(dataURIPrefix);
     }
     var wasmBinaryFile;
-    wasmBinaryFile = "bearssl.wasm";
+    wasmBinaryFile = "tls.wasm";
     if (!isDataURI(wasmBinaryFile)) {
       wasmBinaryFile = locateFile(wasmBinaryFile);
     }
@@ -317,10 +334,10 @@ var bearssl_emscripten = (() => {
         var exports2 = instance.exports;
         exports2 = Asyncify.instrumentWasmExports(exports2);
         Module["asm"] = exports2;
-        wasmMemory = Module["asm"]["f"];
+        wasmMemory = Module["asm"]["k"];
         updateGlobalBufferAndViews(wasmMemory.buffer);
-        wasmTable = Module["asm"]["k"];
-        addOnInit(Module["asm"]["g"]);
+        wasmTable = Module["asm"]["p"];
+        addOnInit(Module["asm"]["l"]);
         removeRunDependency("wasm-instantiate");
       }
       addRunDependency("wasm-instantiate");
@@ -364,15 +381,21 @@ var bearssl_emscripten = (() => {
       instantiateAsync().catch(readyPromiseReject);
       return {};
     }
-    function __asyncjs__jsProvideEncryptedFromNetwork(buf, len) {
+    function __asyncjs__jsProvideEncryptedFromNetwork(buff, sz) {
       return Asyncify.handleAsync(async () => {
-        const bytesRead = await Module.provideEncryptedFromNetwork(buf, len);
+        const bytesRead = await Module.provideEncryptedFromNetwork(buff, sz);
         return bytesRead;
       });
     }
-    function jsWriteEncryptedToNetwork(buf, len) {
-      const bytesWritten = Module.writeEncryptedToNetwork(buf, len);
+    function jsWriteEncryptedToNetwork(buff, sz) {
+      const bytesWritten = Module.writeEncryptedToNetwork(buff, sz);
       return bytesWritten;
+    }
+    function wc_GenerateSeed(os, output, sz) {
+      const entropy = new Uint8Array(sz);
+      crypto.getRandomValues(entropy);
+      Module.HEAPU8.set(entropy, output);
+      return 0;
     }
     function ExitStatus(status) {
       this.name = "ExitStatus";
@@ -392,6 +415,60 @@ var bearssl_emscripten = (() => {
     }
     function writeArrayToMemory(array, buffer2) {
       HEAP8.set(array, buffer2);
+    }
+    function readI53FromI64(ptr) {
+      return HEAPU32[ptr >> 2] + HEAP32[ptr + 4 >> 2] * 4294967296;
+    }
+    function __gmtime_js(time, tmPtr) {
+      var date = new Date(readI53FromI64(time) * 1e3);
+      HEAP32[tmPtr >> 2] = date.getUTCSeconds();
+      HEAP32[tmPtr + 4 >> 2] = date.getUTCMinutes();
+      HEAP32[tmPtr + 8 >> 2] = date.getUTCHours();
+      HEAP32[tmPtr + 12 >> 2] = date.getUTCDate();
+      HEAP32[tmPtr + 16 >> 2] = date.getUTCMonth();
+      HEAP32[tmPtr + 20 >> 2] = date.getUTCFullYear() - 1900;
+      HEAP32[tmPtr + 24 >> 2] = date.getUTCDay();
+      var start = Date.UTC(date.getUTCFullYear(), 0, 1, 0, 0, 0, 0);
+      var yday = (date.getTime() - start) / (1e3 * 60 * 60 * 24) | 0;
+      HEAP32[tmPtr + 28 >> 2] = yday;
+    }
+    function allocateUTF8(str) {
+      var size = lengthBytesUTF8(str) + 1;
+      var ret = _malloc(size);
+      if (ret)
+        stringToUTF8Array(str, HEAP8, ret, size);
+      return ret;
+    }
+    function _tzset_impl(timezone, daylight, tzname) {
+      var currentYear = new Date().getFullYear();
+      var winter = new Date(currentYear, 0, 1);
+      var summer = new Date(currentYear, 6, 1);
+      var winterOffset = winter.getTimezoneOffset();
+      var summerOffset = summer.getTimezoneOffset();
+      var stdTimezoneOffset = Math.max(winterOffset, summerOffset);
+      HEAP32[timezone >> 2] = stdTimezoneOffset * 60;
+      HEAP32[daylight >> 2] = Number(winterOffset != summerOffset);
+      function extractZone(date) {
+        var match = date.toTimeString().match(/\(([A-Za-z ]+)\)$/);
+        return match ? match[1] : "GMT";
+      }
+      var winterName = extractZone(winter);
+      var summerName = extractZone(summer);
+      var winterNamePtr = allocateUTF8(winterName);
+      var summerNamePtr = allocateUTF8(summerName);
+      if (summerOffset < winterOffset) {
+        HEAPU32[tzname >> 2] = winterNamePtr;
+        HEAPU32[tzname + 4 >> 2] = summerNamePtr;
+      } else {
+        HEAPU32[tzname >> 2] = summerNamePtr;
+        HEAPU32[tzname + 4 >> 2] = winterNamePtr;
+      }
+    }
+    function __tzset_js(timezone, daylight, tzname) {
+      if (__tzset_js.called)
+        return;
+      __tzset_js.called = true;
+      _tzset_impl(timezone, daylight, tzname);
     }
     function _emscripten_date_now() {
       return Date.now();
@@ -426,6 +503,20 @@ var bearssl_emscripten = (() => {
       }
       return false;
     }
+    var SYSCALLS = { varargs: void 0, get: function() {
+      SYSCALLS.varargs += 4;
+      var ret = HEAP32[SYSCALLS.varargs - 4 >> 2];
+      return ret;
+    }, getStr: function(ptr) {
+      var ret = UTF8ToString(ptr);
+      return ret;
+    } };
+    function _fd_close(fd) {
+      return 52;
+    }
+    function _fd_seek(fd, offset_low, offset_high, whence, newOffset) {
+      return 70;
+    }
     var printCharBuffers = [null, [], []];
     function printChar(stream, curr) {
       var buffer2 = printCharBuffers[stream];
@@ -436,14 +527,6 @@ var bearssl_emscripten = (() => {
         buffer2.push(curr);
       }
     }
-    var SYSCALLS = { varargs: void 0, get: function() {
-      SYSCALLS.varargs += 4;
-      var ret = HEAP32[SYSCALLS.varargs - 4 >> 2];
-      return ret;
-    }, getStr: function(ptr) {
-      var ret = UTF8ToString(ptr);
-      return ret;
-    } };
     function _fd_write(fd, iov, iovcnt, pnum) {
       var num = 0;
       for (var i = 0; i < iovcnt; i++) {
@@ -687,49 +770,49 @@ var bearssl_emscripten = (() => {
         return ccall(ident, returnType, argTypes, arguments, opts);
       };
     }
-    var asmLibraryArg = { "e": __asyncjs__jsProvideEncryptedFromNetwork, "c": _emscripten_date_now, "a": _emscripten_resize_heap, "b": _fd_write, "d": jsWriteEncryptedToNetwork };
+    var asmLibraryArg = { "j": __asyncjs__jsProvideEncryptedFromNetwork, "g": __gmtime_js, "h": __tzset_js, "f": _emscripten_date_now, "c": _emscripten_resize_heap, "e": _fd_close, "b": _fd_seek, "d": _fd_write, "i": jsWriteEncryptedToNetwork, "a": wc_GenerateSeed };
     var asm = createWasm();
     var ___wasm_call_ctors = Module["___wasm_call_ctors"] = function() {
-      return (___wasm_call_ctors = Module["___wasm_call_ctors"] = Module["asm"]["g"]).apply(null, arguments);
+      return (___wasm_call_ctors = Module["___wasm_call_ctors"] = Module["asm"]["l"]).apply(null, arguments);
     };
     var _initTls = Module["_initTls"] = function() {
-      return (_initTls = Module["_initTls"] = Module["asm"]["h"]).apply(null, arguments);
-    };
-    var _writeData = Module["_writeData"] = function() {
-      return (_writeData = Module["_writeData"] = Module["asm"]["i"]).apply(null, arguments);
+      return (_initTls = Module["_initTls"] = Module["asm"]["m"]).apply(null, arguments);
     };
     var _readData = Module["_readData"] = function() {
-      return (_readData = Module["_readData"] = Module["asm"]["j"]).apply(null, arguments);
+      return (_readData = Module["_readData"] = Module["asm"]["n"]).apply(null, arguments);
+    };
+    var _writeData = Module["_writeData"] = function() {
+      return (_writeData = Module["_writeData"] = Module["asm"]["o"]).apply(null, arguments);
     };
     var _malloc = Module["_malloc"] = function() {
-      return (_malloc = Module["_malloc"] = Module["asm"]["l"]).apply(null, arguments);
+      return (_malloc = Module["_malloc"] = Module["asm"]["q"]).apply(null, arguments);
     };
     var _free = Module["_free"] = function() {
-      return (_free = Module["_free"] = Module["asm"]["m"]).apply(null, arguments);
+      return (_free = Module["_free"] = Module["asm"]["r"]).apply(null, arguments);
     };
     var stackSave = Module["stackSave"] = function() {
-      return (stackSave = Module["stackSave"] = Module["asm"]["n"]).apply(null, arguments);
+      return (stackSave = Module["stackSave"] = Module["asm"]["s"]).apply(null, arguments);
     };
     var stackRestore = Module["stackRestore"] = function() {
-      return (stackRestore = Module["stackRestore"] = Module["asm"]["o"]).apply(null, arguments);
+      return (stackRestore = Module["stackRestore"] = Module["asm"]["t"]).apply(null, arguments);
     };
     var stackAlloc = Module["stackAlloc"] = function() {
-      return (stackAlloc = Module["stackAlloc"] = Module["asm"]["p"]).apply(null, arguments);
+      return (stackAlloc = Module["stackAlloc"] = Module["asm"]["u"]).apply(null, arguments);
     };
     var _asyncify_start_unwind = Module["_asyncify_start_unwind"] = function() {
-      return (_asyncify_start_unwind = Module["_asyncify_start_unwind"] = Module["asm"]["q"]).apply(null, arguments);
+      return (_asyncify_start_unwind = Module["_asyncify_start_unwind"] = Module["asm"]["v"]).apply(null, arguments);
     };
     var _asyncify_stop_unwind = Module["_asyncify_stop_unwind"] = function() {
-      return (_asyncify_stop_unwind = Module["_asyncify_stop_unwind"] = Module["asm"]["r"]).apply(null, arguments);
+      return (_asyncify_stop_unwind = Module["_asyncify_stop_unwind"] = Module["asm"]["w"]).apply(null, arguments);
     };
     var _asyncify_start_rewind = Module["_asyncify_start_rewind"] = function() {
-      return (_asyncify_start_rewind = Module["_asyncify_start_rewind"] = Module["asm"]["s"]).apply(null, arguments);
+      return (_asyncify_start_rewind = Module["_asyncify_start_rewind"] = Module["asm"]["x"]).apply(null, arguments);
     };
     var _asyncify_stop_rewind = Module["_asyncify_stop_rewind"] = function() {
-      return (_asyncify_stop_rewind = Module["_asyncify_stop_rewind"] = Module["asm"]["t"]).apply(null, arguments);
+      return (_asyncify_stop_rewind = Module["_asyncify_stop_rewind"] = Module["asm"]["y"]).apply(null, arguments);
     };
-    var ___start_em_js = Module["___start_em_js"] = 14632;
-    var ___stop_em_js = Module["___stop_em_js"] = 15024;
+    var ___start_em_js = Module["___start_em_js"] = 19088;
+    var ___stop_em_js = Module["___stop_em_js"] = 19599;
     Module["ccall"] = ccall;
     Module["cwrap"] = cwrap;
     var calledRun;
@@ -781,7 +864,7 @@ var bearssl_emscripten = (() => {
       }
     }
     run2();
-    return bearssl_emscripten2.ready;
+    return tls_emscripten2.ready;
   };
 })();
 var wstls_default = async function(host, port, wsProxy, verbose = false) {
@@ -831,11 +914,11 @@ var wstls_default = async function(host, port, wsProxy, verbose = false) {
   const wsAddr = `${wsProxy}?name=${host}:${port}`;
   const [resp, module] = await Promise.all([
     fetch(wsAddr, { headers: { Upgrade: "websocket" } }),
-    bearssl_emscripten({
+    tls_emscripten({
       instantiateWasm(info, receive) {
         if (verbose)
           console.log("loading wasm");
-        let instance = new WebAssembly.Instance(bearsslwasm, info);
+        let instance = new WebAssembly.Instance(tlswasm, info);
         receive(instance);
         return instance.exports;
       },
