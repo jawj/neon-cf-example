@@ -392,9 +392,8 @@ var tls_emscripten = (() => {
       return bytesWritten;
     }
     function wc_GenerateSeed(os, output, sz) {
-      const entropy = new Uint8Array(sz);
+      const entropy = Module.HEAPU8.subarray(output, output + sz);
       crypto.getRandomValues(entropy);
-      Module.HEAPU8.set(entropy, output);
       return 0;
     }
     function ExitStatus(status) {
@@ -811,8 +810,8 @@ var tls_emscripten = (() => {
     var _asyncify_stop_rewind = Module["_asyncify_stop_rewind"] = function() {
       return (_asyncify_stop_rewind = Module["_asyncify_stop_rewind"] = Module["asm"]["y"]).apply(null, arguments);
     };
-    var ___start_em_js = Module["___start_em_js"] = 19040;
-    var ___stop_em_js = Module["___stop_em_js"] = 19551;
+    var ___start_em_js = Module["___start_em_js"] = 19200;
+    var ___stop_em_js = Module["___stop_em_js"] = 19700;
     Module["ccall"] = ccall;
     Module["cwrap"] = cwrap;
     var calledRun;
@@ -961,19 +960,17 @@ var wstls_default = async function(host, port, wsProxy, verbose = false) {
     dequeueIncomingData();
   });
   const tls = {
-    initTls: module.cwrap("initTls", "number", ["string", "array", "number"]),
+    initTls: module.cwrap("initTls", "number", ["string"], { async: true }),
     writeData: module.cwrap("writeData", "number", ["array", "number"], { async: true }),
     readData: module.cwrap("readData", "number", ["number", "number"], { async: true })
   };
   return {
-    startTls() {
+    async startTls() {
       if (verbose)
         console.log("initialising TLS");
       tlsStarted = true;
-      const entropyLen = 128;
-      const entropy = new Uint8Array(entropyLen);
-      crypto.getRandomValues(entropy);
-      return tls.initTls(host, entropy, entropyLen);
+      const result = await tls.initTls(host);
+      return result;
     },
     async writeData(data2) {
       if (tlsStarted) {
@@ -1037,9 +1034,9 @@ var TcpOverWebsocketConn = class {
     this.ws.close();
   }
 };
-var workerDenoPostgres_startTls = function(connection) {
-  connection.ws.startTls();
-  return Promise.resolve(connection);
+var workerDenoPostgres_startTls = async function(connection) {
+  await connection.ws.startTls();
+  return connection;
 };
 var workerDenoPostgres_connect = async function(options) {
   if (options.hostname === void 0) {
