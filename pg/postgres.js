@@ -1,7 +1,5 @@
-"use strict";
-import tlswasm from "./tls.wasm";
 // build/postgres-tmp.js
-var tls_emscripten = (() => {
+import tlswasm from "./tls.wasm";var tls_emscripten = (() => {
   var _scriptDir = typeof document !== "undefined" && document.currentScript ? document.currentScript.src : void 0;
   return function(tls_emscripten2) {
     tls_emscripten2 = tls_emscripten2 || {};
@@ -334,10 +332,10 @@ var tls_emscripten = (() => {
         var exports2 = instance.exports;
         exports2 = Asyncify.instrumentWasmExports(exports2);
         Module["asm"] = exports2;
-        wasmMemory = Module["asm"]["k"];
+        wasmMemory = Module["asm"]["n"];
         updateGlobalBufferAndViews(wasmMemory.buffer);
-        wasmTable = Module["asm"]["p"];
-        addOnInit(Module["asm"]["l"]);
+        wasmTable = Module["asm"]["s"];
+        addOnInit(Module["asm"]["o"]);
         removeRunDependency("wasm-instantiate");
       }
       addRunDependency("wasm-instantiate");
@@ -390,6 +388,67 @@ var tls_emscripten = (() => {
     function jsWriteEncryptedToNetwork(buff, sz) {
       const bytesWritten = Module.writeEncryptedToNetwork(buff, sz);
       return bytesWritten;
+    }
+    function __asyncjs__jsSha256(buffDataIn, sz, buffDigest) {
+      return Asyncify.handleAsync(async () => {
+        if (buffDataIn !== 0) {
+          if (Module._digestStream == null) {
+            const stream = new crypto.DigestStream("SHA-256");
+            const writer = stream.getWriter();
+            Module._digestStream = { stream, writer };
+          }
+          const arrDataIn = Module.HEAPU8.subarray(buffDataIn, buffDataIn + sz);
+          await Module._digestStream.writer.write(arrDataIn);
+        } else {
+          const { stream, writer } = Module._digestStream;
+          await writer.close();
+          const digest2 = await stream.digest;
+          const arrDigest = new Uint8Array(digest2);
+          Module.HEAPU8.set(arrDigest, buffDigest);
+          Module._digestStream = null;
+        }
+      });
+    }
+    function __asyncjs__jsAesGcmEncrypt(dataBuff, dataSz, keyBuff, keySize, ivBuff, ivSz, authInBuff, authInSz, authTagBuff, authTagSz, outBuff) {
+      return Asyncify.handleAsync(async () => {
+        const iv = Module.HEAPU8.subarray(ivBuff, ivBuff + ivSz);
+        const tagLength = authTagSz << 3;
+        const additionalData = Module.HEAPU8.subarray(authInBuff, authInBuff + authInSz);
+        const algorithm = { name: "AES-GCM", iv, tagLength, additionalData };
+        const keyData = Module.HEAPU8.subarray(keyBuff, keyBuff + keySize);
+        const key = await crypto.subtle.importKey("raw", keyData, { name: "AES-GCM" }, false, ["encrypt"]);
+        const data2 = Module.HEAPU8.subarray(dataBuff, dataBuff + dataSz);
+        const resultArrBuff = await crypto.subtle.encrypt(algorithm, key, data2);
+        const result = new Uint8Array(resultArrBuff);
+        const cipherText = result.subarray(0, dataSz);
+        const authTag = result.subarray(dataSz);
+        Module.HEAPU8.set(cipherText, outBuff);
+        Module.HEAPU8.set(authTag, authTagBuff);
+      });
+    }
+    function __asyncjs__jsAesGcmDecrypt(dataBuff, dataSz, keyBuff, keySize, ivBuff, ivSz, authInBuff, authInSz, authTagBuff, authTagSz, outBuff) {
+      return Asyncify.handleAsync(async () => {
+        const iv = Module.HEAPU8.subarray(ivBuff, ivBuff + ivSz);
+        const tagLength = authTagSz << 3;
+        const additionalData = Module.HEAPU8.subarray(authInBuff, authInBuff + authInSz);
+        const algorithm = { name: "AES-GCM", iv, tagLength, additionalData };
+        const keyData = Module.HEAPU8.subarray(keyBuff, keyBuff + keySize);
+        const key = await crypto.subtle.importKey("raw", keyData, { name: "AES-GCM" }, false, ["decrypt"]);
+        const data2 = Module.HEAPU8.subarray(dataBuff, dataBuff + dataSz);
+        const authTag = Module.HEAPU8.subarray(authTagBuff, authTagBuff + authTagSz);
+        const taggedData = new Uint8Array(dataSz + authTagSz);
+        taggedData.set(data2);
+        taggedData.set(authTag, dataSz);
+        try {
+          const resultArrBuff = await crypto.subtle.decrypt(algorithm, key, taggedData);
+          const plainText = new Uint8Array(resultArrBuff);
+          Module.HEAPU8.set(plainText, outBuff);
+          return 0;
+        } catch (err2) {
+          console.log("decrypt error:", err2.message);
+          return -1;
+        }
+      });
     }
     function wc_GenerateSeed(os, output, sz) {
       const entropy = Module.HEAPU8.subarray(output, output + sz);
@@ -769,49 +828,49 @@ var tls_emscripten = (() => {
         return ccall(ident, returnType, argTypes, arguments, opts);
       };
     }
-    var asmLibraryArg = { "j": __asyncjs__jsProvideEncryptedFromNetwork, "g": __gmtime_js, "h": __tzset_js, "f": _emscripten_date_now, "c": _emscripten_resize_heap, "e": _fd_close, "b": _fd_seek, "d": _fd_write, "i": jsWriteEncryptedToNetwork, "a": wc_GenerateSeed };
+    var asmLibraryArg = { "g": __asyncjs__jsAesGcmDecrypt, "h": __asyncjs__jsAesGcmEncrypt, "m": __asyncjs__jsProvideEncryptedFromNetwork, "f": __asyncjs__jsSha256, "d": __gmtime_js, "e": __tzset_js, "c": _emscripten_date_now, "j": _emscripten_resize_heap, "b": _fd_close, "i": _fd_seek, "k": _fd_write, "l": jsWriteEncryptedToNetwork, "a": wc_GenerateSeed };
     var asm = createWasm();
     var ___wasm_call_ctors = Module["___wasm_call_ctors"] = function() {
-      return (___wasm_call_ctors = Module["___wasm_call_ctors"] = Module["asm"]["l"]).apply(null, arguments);
+      return (___wasm_call_ctors = Module["___wasm_call_ctors"] = Module["asm"]["o"]).apply(null, arguments);
     };
     var _initTls = Module["_initTls"] = function() {
-      return (_initTls = Module["_initTls"] = Module["asm"]["m"]).apply(null, arguments);
+      return (_initTls = Module["_initTls"] = Module["asm"]["p"]).apply(null, arguments);
     };
     var _readData = Module["_readData"] = function() {
-      return (_readData = Module["_readData"] = Module["asm"]["n"]).apply(null, arguments);
+      return (_readData = Module["_readData"] = Module["asm"]["q"]).apply(null, arguments);
     };
     var _writeData = Module["_writeData"] = function() {
-      return (_writeData = Module["_writeData"] = Module["asm"]["o"]).apply(null, arguments);
+      return (_writeData = Module["_writeData"] = Module["asm"]["r"]).apply(null, arguments);
     };
     var _malloc = Module["_malloc"] = function() {
-      return (_malloc = Module["_malloc"] = Module["asm"]["q"]).apply(null, arguments);
+      return (_malloc = Module["_malloc"] = Module["asm"]["t"]).apply(null, arguments);
     };
     var _free = Module["_free"] = function() {
-      return (_free = Module["_free"] = Module["asm"]["r"]).apply(null, arguments);
+      return (_free = Module["_free"] = Module["asm"]["u"]).apply(null, arguments);
     };
     var stackSave = Module["stackSave"] = function() {
-      return (stackSave = Module["stackSave"] = Module["asm"]["s"]).apply(null, arguments);
+      return (stackSave = Module["stackSave"] = Module["asm"]["v"]).apply(null, arguments);
     };
     var stackRestore = Module["stackRestore"] = function() {
-      return (stackRestore = Module["stackRestore"] = Module["asm"]["t"]).apply(null, arguments);
+      return (stackRestore = Module["stackRestore"] = Module["asm"]["w"]).apply(null, arguments);
     };
     var stackAlloc = Module["stackAlloc"] = function() {
-      return (stackAlloc = Module["stackAlloc"] = Module["asm"]["u"]).apply(null, arguments);
+      return (stackAlloc = Module["stackAlloc"] = Module["asm"]["x"]).apply(null, arguments);
     };
     var _asyncify_start_unwind = Module["_asyncify_start_unwind"] = function() {
-      return (_asyncify_start_unwind = Module["_asyncify_start_unwind"] = Module["asm"]["v"]).apply(null, arguments);
+      return (_asyncify_start_unwind = Module["_asyncify_start_unwind"] = Module["asm"]["y"]).apply(null, arguments);
     };
     var _asyncify_stop_unwind = Module["_asyncify_stop_unwind"] = function() {
-      return (_asyncify_stop_unwind = Module["_asyncify_stop_unwind"] = Module["asm"]["w"]).apply(null, arguments);
+      return (_asyncify_stop_unwind = Module["_asyncify_stop_unwind"] = Module["asm"]["z"]).apply(null, arguments);
     };
     var _asyncify_start_rewind = Module["_asyncify_start_rewind"] = function() {
-      return (_asyncify_start_rewind = Module["_asyncify_start_rewind"] = Module["asm"]["x"]).apply(null, arguments);
+      return (_asyncify_start_rewind = Module["_asyncify_start_rewind"] = Module["asm"]["A"]).apply(null, arguments);
     };
     var _asyncify_stop_rewind = Module["_asyncify_stop_rewind"] = function() {
-      return (_asyncify_stop_rewind = Module["_asyncify_stop_rewind"] = Module["asm"]["y"]).apply(null, arguments);
+      return (_asyncify_stop_rewind = Module["_asyncify_stop_rewind"] = Module["asm"]["B"]).apply(null, arguments);
     };
-    var ___start_em_js = Module["___start_em_js"] = 19200;
-    var ___stop_em_js = Module["___stop_em_js"] = 19700;
+    var ___start_em_js = Module["___start_em_js"] = 19328;
+    var ___stop_em_js = Module["___stop_em_js"] = 22576;
     Module["ccall"] = ccall;
     Module["cwrap"] = cwrap;
     var calledRun;
@@ -870,6 +929,7 @@ var wstls_default = async function(host, port, wsProxy, verbose = false) {
   let tlsStarted = false;
   const incomingDataQueue = [];
   let outstandingDataRequest = null;
+  let latestWritePromise = Promise.resolve(0);
   function dequeueIncomingData() {
     if (verbose)
       console.log("dequeue ...");
@@ -959,24 +1019,20 @@ var wstls_default = async function(host, port, wsProxy, verbose = false) {
     incomingDataQueue.push(data2);
     dequeueIncomingData();
   });
-  const tls = {
-    initTls: module.cwrap("initTls", "number", ["string"], { async: true }),
-    writeData: module.cwrap("writeData", "number", ["array", "number"], { async: true }),
-    readData: module.cwrap("readData", "number", ["number", "number"], { async: true })
-  };
   return {
     async startTls() {
       if (verbose)
         console.log("initialising TLS");
       tlsStarted = true;
-      const result = await tls.initTls(host);
+      const result = await module.ccall("initTls", "number", ["string"], [host], { async: true });
       return result;
     },
     async writeData(data2) {
       if (tlsStarted) {
         if (verbose)
           console.log("TLS writeData");
-        const status = await tls.writeData(data2, data2.length);
+        latestWritePromise = module.ccall("writeData", "number", ["array", "number"], [data2, data2.length], { async: true });
+        const status = await latestWritePromise;
         return status;
       } else {
         if (verbose)
@@ -987,11 +1043,12 @@ var wstls_default = async function(host, port, wsProxy, verbose = false) {
     },
     async readData(data2) {
       const maxBytes = data2.length;
+      await latestWritePromise;
       if (tlsStarted) {
         if (verbose)
           console.log("TLS readData");
         const buf = module._malloc(maxBytes);
-        const bytesRead = await tls.readData(buf, maxBytes);
+        const bytesRead = await module.ccall("readData", "number", ["number", "number"], [buf, maxBytes], { async: true });
         data2.set(module.HEAPU8.subarray(buf, buf + bytesRead));
         module._free(buf);
         return bytesRead;
@@ -1973,7 +2030,7 @@ function calculateMonthsDifference(bigger, smaller) {
   const calendarDifferences = Math.abs(yearsDiff * 12 + monthsDiff);
   const compareResult = biggerDate > smallerDate ? 1 : -1;
   biggerDate.setMonth(biggerDate.getMonth() - compareResult * calendarDifferences);
-  const isLastMonthNotFull = biggerDate > smallerDate ? 1 : -compareResult === -1 ? 1 : 0;
+  const isLastMonthNotFull = biggerDate > smallerDate ? 1 : -1 === -compareResult ? 1 : 0;
   const months = compareResult * (calendarDifferences - isLastMonthNotFull);
   return months === 0 ? 0 : months;
 }
