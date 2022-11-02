@@ -970,7 +970,7 @@ var wstls_default = async function(host, port, wsProxy, verbose = false) {
       console.log(`${len} bytes dequeued`);
     resolve3(len);
   }
-  const wsAddr = `${wsProxy}?name=${host}:${port}`;
+  const wsAddr = `${wsProxy}?address=${host}:${port}`;
   const [resp, module] = await Promise.all([
     fetch(wsAddr, { headers: { Upgrade: "websocket" } }),
     tls_emscripten({
@@ -1099,7 +1099,7 @@ var workerDenoPostgres_connect = async function(options) {
   if (options.hostname === void 0) {
     throw new Error("Tunnel hostname undefined");
   }
-  const wsProxy = "http://proxy.hahathon.monster/";
+  const wsProxy = "http://proxy.hahathon.monster/v1";
   const wsTls = await wstls_default(options.hostname, options.port, wsProxy, false);
   return new TcpOverWebsocketConn(wsTls);
 };
