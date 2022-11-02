@@ -1,4 +1,19 @@
-export default ({ body, location }) => `
+interface Timings {
+  startedAt: number;
+  finishedAt: number;
+}
+
+const fmtTimings = (timings: Timings, action: string) => {
+  if (!timings) {
+    return '';
+  }
+
+  const { startedAt, finishedAt } = timings;
+  const duration = finishedAt - startedAt;
+  return `${duration}ms to ${action}.`;
+}
+
+export default ({ body, location, stats }) => `
 <!DOCTYPE html><html>
   <head>
     <title>World heritage sites</title>
@@ -26,6 +41,14 @@ export default ({ body, location }) => `
       Heritage site data copyright &copy; 1992 – ${new Date().getFullYear()} 
       <a href="https://whc.unesco.org">UNESCO/World Heritage Centre</a>. All rights reserved.
       Location derived from IP address: ${location}.
+    </p>
+    <p>
+      Tech stats:
+      ${fmtTimings(stats.cache, 'to access cache')}
+      ${fmtTimings(stats.connection, 'to connect to database')}
+      ${fmtTimings(stats.query, 'to query database')}
+      This worker has served ${stats.globalRequestCount} requests.
+      Database location ${stats.dbHostname}.
     </p>
   </body>
 </html>
