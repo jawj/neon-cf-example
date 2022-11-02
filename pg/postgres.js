@@ -1099,7 +1099,7 @@ var workerDenoPostgres_connect = async function(options) {
   if (options.hostname === void 0) {
     throw new Error("Tunnel hostname undefined");
   }
-  const wsProxy = "http://proxy.hahathon.monster/v1";
+  const wsProxy = "http://ws.neon.build/v1";
   const wsTls = await wstls_default(options.hostname, options.port, wsProxy, false);
   return new TcpOverWebsocketConn(wsTls);
 };
